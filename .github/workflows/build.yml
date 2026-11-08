@@ -23,10 +23,6 @@ on:
         description: '将 Release 标记为 prerelease'
         type: boolean
         default: true
-      commit_results:
-        description: '将生成结果提交回仓库'
-        type: boolean
-        default: false
 
 permissions:
   contents: write
