@@ -26,7 +26,7 @@ author:
 - ``omeg``、``ohm``、``zzgl`` 是纯 ASCII（a-z、长度 ≤ 4），会作为编码原样写入；
 - ``欧姆`` 是中文，仍走「算五笔码」的流程，最终也指向 Ω。
 
-**直接编码的限制**：只用 a-z 字母，长度 1-6（含 6）。超过 6 字符
+**直接编码的限制**：只用 a-z 字母，长度 1-4（含 4）。超过 4 字符
 会被拒绝并报错，请自行缩短或改用中文含义。
 
 可用 ``--no-literal-code`` 关闭这一识别，让所有内容都按中文含义计算。
@@ -41,10 +41,10 @@ import sys
 import time
 import unicodedata
 
-DEFAULT_RANK = 3
+DEFAULT_RANK = 2
 DICT_FILENAME = "wubi86_words.tsv"
-MAX_WARNINGS = 30
-MAX_DIRECT_CODE_LEN = 6
+MAX_WARNINGS = 50
+MAX_DIRECT_CODE_LEN = 4
 
 
 # --------------------------------------------------------------------------- #
@@ -123,7 +123,7 @@ def normalize_sep(value):
 # 码表
 # --------------------------------------------------------------------------- #
 def resolve_dict(path):
-    """定位五笔码表：优先 --dict，其次脚本所在目录的 wubi86.tsv。"""
+    """定位五笔码表：优先 --dict，其次脚本所在目录的 wubi86_words.tsv。"""
     if path:
         full = os.path.abspath(os.path.expanduser(path))
         if not os.path.isfile(full):
