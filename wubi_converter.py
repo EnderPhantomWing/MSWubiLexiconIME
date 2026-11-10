@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+author:
+    Nativu5
+    gxgzf
+    EnderPhantomWing
+    DeepSeek
+"""
 """把「emoji + 中文含义」对照表直接转换为五笔输入法的用户自定义短语 .dat。
 
 一个 emoji 可以对应多个含义，用 Tab 隔开即可::
@@ -13,10 +20,14 @@
 
     䊘	omeg
     Ω	omeg	欧姆	ohm
+    ①	zzgl
 
 上例中：
-- ``omeg``、``ohm`` 是纯 ASCII（a-y、长度 ≤ 4），会作为编码原样写入；
+- ``omeg``、``ohm``、``zzgl`` 是纯 ASCII（a-z、长度 ≤ 4），会作为编码原样写入；
 - ``欧姆`` 是中文，仍走「算五笔码」的流程，最终也指向 Ω。
+
+**直接编码的限制**：只用 a-z 字母，长度 1-6（含 6）。超过 6 字符
+会被拒绝并报错，请自行缩短或改用中文含义。
 
 可用 ``--no-literal-code`` 关闭这一识别，让所有内容都按中文含义计算。
 """
@@ -33,6 +44,7 @@ import unicodedata
 DEFAULT_RANK = 3
 DICT_FILENAME = "wubi86_words.tsv"
 MAX_WARNINGS = 30
+MAX_DIRECT_CODE_LEN = 6
 
 
 # --------------------------------------------------------------------------- #
@@ -91,7 +103,7 @@ def build_parser():
     )
     parser.add_argument(
         "--no-literal-code", action="store_true",
-        help="关闭「纯 ASCII 字母自动作为直接编码」的识别（如 Ω<TAB>omeg 里的 omeg）",
+        help="关闭「纯 ASCII 字母（a-z、长度 1-4）自动作为直接编码」的识别（如 Ω<TAB>omeg 里的 omeg）",
     )
     parser.add_argument("--encoding", default="utf-8-sig", help="输入文件编码（默认 utf-8-sig）")
     parser.add_argument("--swap", action="store_true", help="输入列顺序为「含义... <分隔符> emoji」时使用")
@@ -192,14 +204,30 @@ def is_cjk(char):
 
 
 def is_direct_code(text):
-    """检查 text 是否是直接编码：纯 ASCII 字母 a-y，长度 1-4。
+    """检查 text 是否是直接编码：纯 ASCII 字母 a-z，长度 1-6。
 
     满足条件的内容会被当作输入法编码原样写入 .dat，
-    不再进入五笔编码计算流程。例：``omeg``、``kl``。
+    不再进入五笔编码计算流程。例：``omeg``、``zzgl``、``kl``。
+
+    注意：这里放行 z 开头（例如 ``zzgl`` = ①）。五笔码表本身仍不收录
+    z 码，但用户自定义短语的编码字段可以含 z。
     """
-    if not text or not (1 <= len(text) <= 4):
+    if not text or not (1 <= len(text) <= MAX_DIRECT_CODE_LEN):
         return False
-    return all('a' <= c <= 'y' for c in text.lower())
+    return all('a' <= c <= 'z' for c in text.lower())
+
+
+def looks_like_long_code(text):
+    """检查 text 是否"看起来像自定义编码，但超过 4 字符"。
+
+    用于在报错时给出更准确的原因（"编码超过 4 字符"而不是误导性的
+    "包含非汉字字符 'o'"）。
+    """
+    return (
+        bool(text)
+        and len(text) > MAX_DIRECT_CODE_LEN
+        and all('a' <= c <= 'z' for c in text.lower())
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -470,7 +498,7 @@ def main(argv=None):
 
     for lineno, emoji, meanings in pairs:
         for text in meanings:
-            # ① 先判断是否属于「直接编码」：纯 ASCII、a-y、1-4 个字符
+            # ① 先判断是否属于「直接编码」：纯 ASCII、a-z、1-4 个字符
             direct = not args.no_literal_code and is_direct_code(text)
             effective = text.lower() if direct else text
 
@@ -488,10 +516,18 @@ def main(argv=None):
                 code, missing = wubi_code(text, table)
 
             if code is None:
-                if not missing:
+                if not args.no_literal_code and looks_like_long_code(text):
+                    reason = (
+                        "自定义编码 %r 超过 %d 字符上限，请缩短到 4 字符以内"
+                        % (text, MAX_DIRECT_CODE_LEN)
+                    )
+                elif not missing:
                     reason = "含义为空"
                 elif not is_cjk(missing):
-                    reason = "包含非汉字字符 %r" % missing
+                    reason = (
+                        "包含非汉字字符 %r（如需作为自定义编码，请只使用 a-z 字母"
+                        "且不超过 %d 字符）" % (missing, MAX_DIRECT_CODE_LEN)
+                    )
                 else:
                     reason = "码表中缺少汉字 %r" % missing
                 encode_errors.append((lineno, emoji, text, reason))

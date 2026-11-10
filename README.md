@@ -1,4 +1,5 @@
-# MSWubiLexiconIME（五笔自定义短语词库生成器 TSV → DAT）
+# MSWubiLexiconIME
+### （五笔自定义短语词库生成器 TSV → DAT）
 
 一条命令把「目标字符 + 中文含义 / 直接编码」对照表转成微软输入法的用户自定义短语 `.dat`。
 
@@ -22,12 +23,15 @@ python wubi_converter.py input.tsv --strict --output wubi_custom_lexicon.dat --j
 一个目标字符可以对应**多个含义**（Tab 分隔），每个含义单独计算五笔编码、单独生成一条记录，
 所以 `.dat` 里同一个字符出现多次是正常的。
 
-除自动计算五笔编码外，含义列里写**纯 ASCII 键位**（`a`–`y`，1–4 个字符）时，
+除自动计算五笔编码外，含义列里写**纯 ASCII 键位**（`a`–`z`，1–6 个字符）时，
 会被当作**直接编码**原样写入，不做编码计算。例如：
 
 ```
 䊘	omeg
 Ω	omeg	欧姆    ohm
+①	zzgl
+™	zztm
+㏒	zlog
 ```
 
 生成后，输入 `omeg` 会同时出现「䊘」和「Ω」，「欧姆」按五笔码输出「Ω」，`ohm` 直接指向「Ω」。
@@ -90,18 +94,18 @@ python wubi_converter.py words.tsv --meaning-sep '、'
 
 ### 直接编码
 
-当某一列是纯 ASCII 字母（`a`–`y`，1–4 个字符）时，程序会把它当作**直接编码**，
+当某一列是纯 ASCII 字母（`a`–`z`，1–4 个字符）时，程序会把它当作**直接编码**，
 原样写进 `.dat`，不再经过五笔编码计算：
 
 ```
 䊘	omeg
 Ω	omeg	欧米伽	ohm
-⌛	hourglass	时
+⌛	hourgl	时
 ```
 
 > 不推荐将英语单词直接写入tsv！
 
-- `omeg`、`ohm`、`hourglass` 属于直接编码（小写化后写入，`OMEG` 与 `omeg` 视为同一条）；
+- `omeg`、`ohm`、`hourgl` 属于直接编码（小写化后写入，`OMEG` 与 `omeg` 视为同一条）；
 - `欧米伽`、`时` 是中文，仍按五笔规则计算；
 - 同一个字符对应的不同列（直接编码、中文含义）会**分别**生成记录；
 - 长度超过 4、含 `z`、或含非 ASCII 字符的内容**不会**被识别为直接编码；
