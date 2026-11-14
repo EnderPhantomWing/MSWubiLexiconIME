@@ -1,0 +1,1 @@
+python wubi_tsv2rime.py input.tsv -o lexicon.dict.yaml --version 2026-11-13 --strict
